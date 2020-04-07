@@ -3,7 +3,7 @@ UNC - FCEFyN - Comunicaciones digitales
 Año 2020
 Piñero, Tomás Santiago
 
-Modelado de fuente, transmisor y canal
+Simulador BPSK con canal Gausiano v1.0
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,8 +12,8 @@ import itertools as it
 #Parámetros
 muestras = 10000                    #Cantidad de muestras
 cardinalidad = 2                    #Cantidad de mensajes
-prob = [0.7, 0.3]                   #De no serlo, se asignan aca
-mensajes = [0, 1]                    #Mensajes a enviar
+prob = [0.5, 0.5]                   #De no serlo, se asignan aca
+mensajes = [0, 1]                   #Mensajes a enviar
 mu = [0 for i in range(muestras)]   #Muestras para el histograma
 C = [-1, 1]                         #Códigos
 señal = []                          #Señal a la salida del transmisor
@@ -43,28 +43,27 @@ Fin Fuente
 """----------
 Transmisor
 """
-#Funcion que realiza la caodificación de mensajes
+#Funcion que realiza la codificación de mensajes
 def codificar(codigo, hipotesis):
+
     #Copio los C y la H para generar la señal a enviar
     code_copy = codigo.copy()
     hipotesis = mensajes.copy()
     print("\nCodificación:\n")
-    #Selecciona una una H y una C y realiza el mapeo
+    #Selecciona una una H y un C y realiza el mapeo
     for r in range(len(hipotesis)):
-        seleccion_hipotesis = np.random.choice(hipotesis,1)
-        index = np.random.randint(len(code_copy))
-
-        hipotesis.remove(seleccion_hipotesis)
-        seleccion_code = code_copy[index]
+        seleccion_hipotesis = hipotesis[r]
+        seleccion_code = code_copy[r]
 
         señal.append(int(seleccion_code))
         print("C = " +str(seleccion_code)+" -> H = "+str(seleccion_hipotesis))
-        del code_copy[index]
 
     print("\nSeñal: "+str(señal))
 
+#Codificación de los mensajes a enviar
 codificar(C, mensajes)
 
+#Genera la cantidad de muestras según probabilidades
 for i in range(muestras):
     s = np.random.uniform(0,1)
     if s < prob[0]:
@@ -80,7 +79,7 @@ Canal
 """
 media = 0
 varianza = 0.5
-#Crea un array[muestras] con media 0 y desviacion 1
+#Crea un array[muestras] según los parámetros
 noise = np.random.normal(media,varianza,muestras)
 
 signal = mu + noise
@@ -93,16 +92,26 @@ bins = 50
 plt.title("Histograma de la señal")
 plt.xlabel("Valores")
 plt.ylabel("Frecuencia")
-plt.hist(signal, bins, alpha = 0.5, color = 'red', ec = 'black')
+plt.hist(signal, bins, alpha = 0.5, color = 'green', ec = 'black')
 plt.show()
 plt.clf()
 
 """----------
 Receptor
 """
-threshold = prob[0]/prob[1]
+#Se calcula el threshold
+threshold = min(prob)/max(prob)
 ln = np.log(threshold)
 
+#MAP (si es equiprobable, se convierte en ML)
+zeta = (varianza/(C[1]-C[0])) * ln + ((C[0]+C[1])/2)
+
+#Señales detectadas
+detectado = np.where(signal >= zeta, 1, 0);
+
+errores = np.sum(abs((detectado[1:muestras]-señal[1:muestras]))/2)
+
+print("Probabilidad de error: ", errores/muestras)
 
 """----------
 Fin Receptor
